@@ -1,8 +1,8 @@
 ﻿<Application
-    x:Class="NetworkTablesTester1.App"
+    x:Class="UniversalVision.App"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-    xmlns:local="using:NetworkTablesTester1"
+    xmlns:local="using:UniversalVision"
     RequestedTheme="Light">
 
 </Application>

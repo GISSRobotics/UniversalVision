@@ -7,8 +7,8 @@
     <ProjectGuid>{BB7A5C8C-AEA0-4459-8821-2600D798CF7E}</ProjectGuid>
     <OutputType>AppContainerExe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>NetworkTablesTester1</RootNamespace>
-    <AssemblyName>NetworkTablesTester1</AssemblyName>
+    <RootNamespace>UniversalVision</RootNamespace>
+    <AssemblyName>UniversalVision</AssemblyName>
     <DefaultLanguage>en-US</DefaultLanguage>
     <TargetPlatformIdentifier>UAP</TargetPlatformIdentifier>
     <TargetPlatformVersion Condition=" '$(TargetPlatformVersion)' == '' ">10.0.16299.0</TargetPlatformVersion>
@@ -104,7 +104,7 @@
     <AppxManifest Include="Package.appxmanifest">
       <SubType>Designer</SubType>
     </AppxManifest>
-    <None Include="NetworkTablesTester1_TemporaryKey.pfx" />
+    <None Include="UniversalVision_TemporaryKey.pfx" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="Properties\Default.rd.xml" />
@@ -132,7 +132,7 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\ClassLibrary1\NetworkTables.csproj">
+    <ProjectReference Include="..\NetworkTables\NetworkTables.csproj">
       <Project>{6237679a-61a7-4dd1-895d-6dd9d93961d0}</Project>
       <Name>NetworkTables</Name>
     </ProjectReference>
