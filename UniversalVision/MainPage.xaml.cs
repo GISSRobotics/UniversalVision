@@ -22,6 +22,8 @@ using Windows.ApplicationModel;
 using Windows.System.Display;
 using Windows.Graphics.Display;
 using Windows.Devices.Enumeration;
+using Windows.Media.Capture.Frames;
+using Windows.Media.Devices;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -38,6 +40,7 @@ namespace UniversalVision
 
 
         MediaCapture mediaCapture;
+        MediaFrameReader mediaFrameReader;
         bool isPreviewing;
         DisplayRequest displayRequest = new DisplayRequest();
 
@@ -75,7 +78,8 @@ namespace UniversalVision
 
         private async void StartPreviewAsync()
         {
-            string requestedPID = "PID_0779";
+            //string requestedPID = "PID_0779";
+            string requestedPID = "PID_0810";
             try
             {
                 mediaCapture = new MediaCapture();
@@ -83,15 +87,29 @@ namespace UniversalVision
                 MediaCaptureInitializationSettings initializationSettings = new MediaCaptureInitializationSettings();
                 foreach (var device in devices)
                 {
-                    System.Diagnostics.Debug.WriteLine(device.Name);
-                    System.Diagnostics.Debug.WriteLine(device.Id);
                     if (device.Id.Contains(requestedPID))
                     {
                         initializationSettings.VideoDeviceId = device.Id;
+                        break;
                     }
                 }
                 await mediaCapture.InitializeAsync(initializationSettings);
-                displayRequest.RequestActive();
+                MediaFrameSource frameSource = mediaCapture.FrameSources.First().Value;
+                VideoDeviceController vdc = frameSource.Controller.VideoDeviceController;
+                vdc.DesiredOptimization = MediaCaptureOptimization.LatencyThenQuality;
+                vdc.PrimaryUse = CaptureUse.Video;
+                mediaCapture.VideoDeviceController.Exposure.TrySetAuto(true);
+                var formats = frameSource.SupportedFormats;
+                foreach (var format in formats)
+                {
+                    if (format.VideoFormat.Width == 800 && format.VideoFormat.Width == 600 && Math.Round((double)(format.FrameRate.Numerator / format.FrameRate.Denominator)) == 15)
+                    {
+                        await frameSource.SetFormatAsync(format);
+                        break;
+                    }
+                }
+                mediaFrameReader = await mediaCapture.CreateFrameReaderAsync(frameSource);
+                await mediaFrameReader.StartAsync();
             }
             catch (UnauthorizedAccessException)
             {
