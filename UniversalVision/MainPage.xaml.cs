@@ -75,17 +75,21 @@ namespace UniversalVision
 
         private async void StartPreviewAsync()
         {
+            string requestedPID = "PID_0779";
             try
             {
                 mediaCapture = new MediaCapture();
                 DeviceInformationCollection devices = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);
+                MediaCaptureInitializationSettings initializationSettings = new MediaCaptureInitializationSettings();
                 foreach (var device in devices)
                 {
                     System.Diagnostics.Debug.WriteLine(device.Name);
                     System.Diagnostics.Debug.WriteLine(device.Id);
+                    if (device.Id.Contains(requestedPID))
+                    {
+                        initializationSettings.VideoDeviceId = device.Id;
+                    }
                 }
-                MediaCaptureInitializationSettings initializationSettings = new MediaCaptureInitializationSettings();
-                initializationSettings.VideoDeviceId = "\\\\?\\USB#VID_045E&PID_0810&MI_00#6&1e5e39da&0&0000#{e5323777-f976-4f5b-9b55-b94699c46e44}\\GLOBAL";
                 await mediaCapture.InitializeAsync(initializationSettings);
                 displayRequest.RequestActive();
             }
