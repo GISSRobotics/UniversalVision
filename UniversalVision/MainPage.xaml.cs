@@ -32,7 +32,7 @@ namespace UniversalVision
         /// <summary>
         /// Network Tables reference
         /// </summary>
-        private NetworkTables.NetworkTables NT = NetworkTables.NetworkTables.Instance;
+        //private NetworkTables.NetworkTables NT = NetworkTables.NetworkTables.Instance;
 
         private DispatcherTimer timer = new DispatcherTimer();
 
@@ -62,8 +62,8 @@ namespace UniversalVision
 
         private void Timer_Tick(object sender, object e)
         {
-            double value = NT.GetNumber("/SmartDashboard/Tester", -1.0);
-            disp.Text = value.ToString();
+            //double value = NT.GetNumber("/SmartDashboard/Tester", -1.0);
+           // disp.Text = value.ToString();
         }
 
         private void sendTest_Click(object sender, RoutedEventArgs e)
