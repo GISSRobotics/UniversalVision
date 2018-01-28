@@ -30,8 +30,7 @@ namespace UniversalVision
         //private NetworkTables.NetworkTables NT = NetworkTables.NetworkTables.Instance;
 
         private DispatcherTimer timer = new DispatcherTimer();
-
-        bool isPreviewing;
+        
         Camera cam = new Camera();
 
 
@@ -69,7 +68,6 @@ namespace UniversalVision
             {
                 PreviewControl.Source = cam.Capture;
                 await cam.Capture.StartPreviewAsync();
-                isPreviewing = true;
             }
             catch
             {
@@ -87,7 +85,6 @@ namespace UniversalVision
             {
                 PreviewControl.Source = cam.Capture;
                 await cam.Capture.StartPreviewAsync();
-                isPreviewing = true;
             }
             catch (FileLoadException)
             {

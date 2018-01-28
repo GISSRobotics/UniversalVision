@@ -7,15 +7,27 @@ using Windows.Media.Capture;
 using Windows.Devices.Enumeration;
 using Windows.Media.Capture.Frames;
 using Windows.Media.Devices;
+using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Diagnostics;
+using Windows.Storage.Streams;
+using Windows.Graphics.Imaging;
+using System.IO;
 
 namespace CameraServer.Devices
 {
     public class Camera
     {
+        public byte[] Frame { get; set; }
         private MediaCapture mediaCapture;
         private MediaFrameReader mediaFrameReader;
         private bool isInitialized = false;
         private string pid = string.Empty;
+        private bool _stopThreads = false;
+        private int _stoppedThreads = 1;
+
+        private volatile object _lastFrameAddedLock = new object();
+        private volatile Stopwatch _lastFrameAdded = new Stopwatch();
 
         public MediaCapture Capture
         {
@@ -86,6 +98,84 @@ namespace CameraServer.Devices
             {
 
             }
+        }
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        private void GarbageCollectorCanWorkHere() { }
+
+        private void ProcessFrames()
+        {
+            _stoppedThreads--;
+
+            while (!_stopThreads)
+            {
+                try
+                {
+                    GarbageCollectorCanWorkHere();
+
+                    MediaFrameReference frame = mediaFrameReader.TryAcquireLatestFrame();
+
+                    Stopwatch frameDuration = new Stopwatch();
+                    frameDuration.Start();
+
+                    if (frame == null || frame.VideoMediaFrame == null || frame.VideoMediaFrame.SoftwareBitmap == null)
+                    {
+                        continue;
+                    }
+
+                    using (var stream = new InMemoryRandomAccessStream())
+                    {
+                        using (var bitmap = SoftwareBitmap.Convert(frame.VideoMediaFrame.SoftwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore))
+                        {
+                            var imageTask = BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream).AsTask();
+                            imageTask.Wait();
+                            BitmapEncoder encoder = imageTask.Result;
+                            encoder.SetSoftwareBitmap(bitmap);
+
+                            var flushTask = encoder.FlushAsync().AsTask();
+                            flushTask.Wait();
+
+                            using (var asStream = stream.AsStream())
+                            {
+                                asStream.Position = 0;
+
+                                var image = new byte[asStream.Length];
+                                asStream.Read(image, 0, image.Length);
+
+                                lock (_lastFrameAddedLock)
+                                {
+                                    if (_lastFrameAdded.Elapsed.Subtract(frameDuration.Elapsed) > TimeSpan.Zero)
+                                    {
+                                        Frame = image;
+
+                                        _lastFrameAdded = frameDuration;
+                                    }
+                                }
+
+                                encoder = null;
+                            }
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            _stoppedThreads++;
+        }
+
+        public void StartProcessing()
+        {
+            Task.Factory.StartNew(() =>
+            {
+                ProcessFrames();
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default).AsAsyncAction().AsTask();
+        }
+
+        public void StopProcessing()
+        {
+            _stopThreads = true;
+            SpinWait.SpinUntil(() => { return _stoppedThreads == 1; });
+            _stopThreads = false;
         }
 
     }
