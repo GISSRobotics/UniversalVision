@@ -16,14 +16,7 @@ using NetworkTables;
 using System.Net.Sockets;
 using System.Threading.Tasks;
 using Windows.Networking.Sockets;
-
-using Windows.Media.Capture;
-using Windows.ApplicationModel;
-using Windows.System.Display;
-using Windows.Graphics.Display;
-using Windows.Devices.Enumeration;
-using Windows.Media.Capture.Frames;
-using Windows.Media.Devices;
+using CameraServer.Devices;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -38,11 +31,8 @@ namespace UniversalVision
 
         private DispatcherTimer timer = new DispatcherTimer();
 
-
-        MediaCapture mediaCapture;
-        MediaFrameReader mediaFrameReader;
         bool isPreviewing;
-        DisplayRequest displayRequest = new DisplayRequest();
+        Camera cam = new Camera();
 
 
         public MainPage()
@@ -69,10 +59,22 @@ namespace UniversalVision
            // disp.Text = value.ToString();
         }
 
-        private void sendTest_Click(object sender, RoutedEventArgs e)
+        private async void sendTest_Click(object sender, RoutedEventArgs e)
         {
 
             //NT.SendNumber("/SmartDashboard/Tester", 4.5);
+            PreviewControl.Source = null;
+            await cam.SwitchCameraTo("PID_0779");
+            try
+            {
+                PreviewControl.Source = cam.Capture;
+                await cam.Capture.StartPreviewAsync();
+                isPreviewing = true;
+            }
+            catch
+            {
+                return;
+            }
 
         }
 
@@ -80,46 +82,11 @@ namespace UniversalVision
         {
             //string requestedPID = "PID_0779";
             string requestedPID = "PID_0810";
+            await cam.Initialize(requestedPID);
             try
             {
-                mediaCapture = new MediaCapture();
-                DeviceInformationCollection devices = await DeviceInformation.FindAllAsync(DeviceClass.VideoCapture);
-                MediaCaptureInitializationSettings initializationSettings = new MediaCaptureInitializationSettings();
-                foreach (var device in devices)
-                {
-                    if (device.Id.Contains(requestedPID))
-                    {
-                        initializationSettings.VideoDeviceId = device.Id;
-                        break;
-                    }
-                }
-                await mediaCapture.InitializeAsync(initializationSettings);
-                MediaFrameSource frameSource = mediaCapture.FrameSources.First().Value;
-                VideoDeviceController vdc = frameSource.Controller.VideoDeviceController;
-                vdc.DesiredOptimization = MediaCaptureOptimization.LatencyThenQuality;
-                vdc.PrimaryUse = CaptureUse.Video;
-                mediaCapture.VideoDeviceController.Exposure.TrySetAuto(true);
-                var formats = frameSource.SupportedFormats;
-                foreach (var format in formats)
-                {
-                    if (format.VideoFormat.Width == 800 && format.VideoFormat.Width == 600 && Math.Round((double)(format.FrameRate.Numerator / format.FrameRate.Denominator)) == 15)
-                    {
-                        await frameSource.SetFormatAsync(format);
-                        break;
-                    }
-                }
-                mediaFrameReader = await mediaCapture.CreateFrameReaderAsync(frameSource);
-                await mediaFrameReader.StartAsync();
-            }
-            catch (UnauthorizedAccessException)
-            {
-                return;
-            }
-
-            try
-            {
-                PreviewControl.Source = mediaCapture;
-                await mediaCapture.StartPreviewAsync();
+                PreviewControl.Source = cam.Capture;
+                await cam.Capture.StartPreviewAsync();
                 isPreviewing = true;
             }
             catch (FileLoadException)
