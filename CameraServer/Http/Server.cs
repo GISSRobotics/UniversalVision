@@ -1,10 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using CameraServer.Devices;
 using Windows.Networking.Sockets;
+using Windows.Storage.Streams;
 
 namespace CameraServer.Http
 {
@@ -45,7 +49,7 @@ namespace CameraServer.Http
             {
                 var socket = args.Socket;
 
-                var request = await ReadRequest(socket);
+                ServerRequest request = await ReadRequest(socket);
                 await WriteResponse(request, socket);
 
                 socket.InputStream.Dispose();
@@ -55,14 +59,55 @@ namespace CameraServer.Http
             catch { }
         }
 
-        private Task WriteResponse(object request, StreamSocket socket)
+        private async Task WriteResponse(ServerRequest request, StreamSocket socket)
         {
-            throw new NotImplementedException();
+            
         }
 
-        private Task ReadRequest(StreamSocket socket)
+        private async Task<ServerRequest> ReadRequest(StreamSocket socket)
         {
-            throw new NotImplementedException();
+            string req = string.Empty;
+            bool error = false;
+
+            IInputStream inputStream = socket.InputStream;
+
+            byte[] data = new byte[BUFFER_SIZE];
+            IBuffer buffer = data.AsBuffer();
+
+            DateTime startReadRequest = DateTime.Now;
+            while (!HttpGetRequestHasUrl(req))
+            {
+                if (DateTime.Now.Subtract(startReadRequest) >= TimeSpan.FromMilliseconds(5000))
+                {
+                    error = true;
+                    return new ServerRequest(null, true);
+                }
+
+                var inputStreamReadTask = inputStream.ReadAsync(buffer, BUFFER_SIZE, InputStreamOptions.Partial);
+                TimeSpan timeout = TimeSpan.FromMilliseconds(1000);
+                await TaskHelper.WithTimeoutAfterStart(ct => inputStreamReadTask.AsTask(ct), timeout);
+
+                req += Encoding.UTF8.GetString(data, 0, (int)inputStreamReadTask.AsTask().Result.Length);
+            }
+
+            return new ServerRequest(req, error);
+        }
+
+        private bool HttpGetRequestHasUrl(string req)
+        {
+            var regex = new Regex("GET.*HTTP.*\r\n", RegexOptions.IgnoreCase);
+            return regex.IsMatch(req.ToUpper());
+        }
+    }
+
+    public static class TaskHelper
+    {
+        public static async Task WithTimeoutAfterStart(Func<CancellationToken, Task> operation, TimeSpan timeout)
+        {
+            var source = new CancellationTokenSource();
+            var task = operation(source.Token);
+            source.CancelAfter(timeout);
+            await task;
         }
     }
 }

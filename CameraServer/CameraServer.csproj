@@ -108,6 +108,8 @@
   <ItemGroup>
     <Compile Include="Devices\Camera.cs" />
     <Compile Include="Http\Server.cs" />
+    <Compile Include="Http\ServerRequest.cs" />
+    <Compile Include="Http\ServerResponse.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="Properties\CameraServer.rd.xml" />
   </ItemGroup>
