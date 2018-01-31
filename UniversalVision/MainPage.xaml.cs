@@ -17,6 +17,7 @@ using System.Net.Sockets;
 using System.Threading.Tasks;
 using Windows.Networking.Sockets;
 using CameraServer.Devices;
+using CameraServer.Http;
 
 // The Blank Page item template is documented at https://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -49,7 +50,10 @@ namespace UniversalVision
             NT.SendString("/SmartDashboard/Hello", "World");
             /**/
 
-            StartPreviewAsync();
+            //StartPreviewAsync();
+
+            Server server = new Server();
+            server.Start();
         }
 
         private void Timer_Tick(object sender, object e)

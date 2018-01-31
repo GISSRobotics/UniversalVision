@@ -12,7 +12,7 @@ using Windows.Storage.Streams;
 
 namespace CameraServer.Http
 {
-    class Server
+    public class Server
     {
         private const uint BUFFER_SIZE = 1024;
         private readonly StreamSocketListener _listener;
@@ -61,7 +61,12 @@ namespace CameraServer.Http
 
         private async Task WriteResponse(ServerRequest request, StreamSocket socket)
         {
-            
+            var relativeUrlLower = request.Url.ToLowerInvariant();
+            var outputStream = socket.OutputStream;
+
+            System.Diagnostics.Debug.WriteLine(relativeUrlLower);
+
+            ServerResponse.WriteResponseOK(outputStream);
         }
 
         private async Task<ServerRequest> ReadRequest(StreamSocket socket)

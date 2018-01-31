@@ -107,6 +107,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="Devices\Camera.cs" />
+    <Compile Include="Http\HttpContentType.cs" />
+    <Compile Include="Http\HttpStatusCode.cs" />
     <Compile Include="Http\Server.cs" />
     <Compile Include="Http\ServerRequest.cs" />
     <Compile Include="Http\ServerResponse.cs" />

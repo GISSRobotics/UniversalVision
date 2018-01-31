@@ -2,15 +2,42 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using Windows.Data.Json;
 
 namespace CameraServer.Http
 {
     class ServerRequest
     {
+
+        public string Request { get; private set; }
+        public JsonObject Body { get; private set; }
+        public string Url { get; private set; }
+        public bool Error { get; private set; }
+
         public ServerRequest(string request, bool error)
         {
+            request = request ?? string.Empty;
 
+            Request = request;
+            Error = error;
+
+            var urlRegex = new Regex(".*GET(.*)HTTP.*", RegexOptions.IgnoreCase);
+            var urlGroups = urlRegex.Match(request).Groups;
+            Url = urlGroups.Count >= 2 ? urlGroups[1].Value.Trim() : string.Empty;
+
+            var bodyRegex = new Regex("<RequestBoday>(.*)</RequestBody>", RegexOptions.IgnoreCase);
+            var bodyGroups = bodyRegex.Match(Uri.UnescapeDataString(Url)).Groups;
+            var body = bodyGroups.Count >= 2 ? bodyGroups[1].Value.Trim() : null;
+            if (body != null)
+            {
+                JsonObject bodyJson = null;
+                if (JsonObject.TryParse(body, out bodyJson))
+                {
+                    Body = bodyJson;
+                }
+            }
         }
     }
 }
