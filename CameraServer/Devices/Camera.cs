@@ -13,6 +13,7 @@ using System.Diagnostics;
 using Windows.Storage.Streams;
 using Windows.Graphics.Imaging;
 using System.IO;
+using Windows.Media.MediaProperties;
 
 namespace CameraServer.Devices
 {
@@ -27,7 +28,6 @@ namespace CameraServer.Devices
         private int _stoppedThreads = 1;
 
         private volatile object _lastFrameAddedLock = new object();
-        private volatile Stopwatch _lastFrameAdded = new Stopwatch();
 
         public MediaCapture Capture
         {
@@ -68,7 +68,7 @@ namespace CameraServer.Devices
                 MediaCaptureInitializationSettings initializationSettings = new MediaCaptureInitializationSettings();
                 foreach (var device in devices)
                 {
-                    System.Diagnostics.Debug.WriteLine(device.Id);
+                    Debug.WriteLine(device.Id);
                     if (device.Id.Contains(pid))
                     {
                         initializationSettings.VideoDeviceId = device.Id;
@@ -103,7 +103,7 @@ namespace CameraServer.Devices
         [MethodImpl(MethodImplOptions.NoInlining)]
         private void GarbageCollectorCanWorkHere() { }
 
-        private void ProcessFrames()
+        private async Task ProcessFramesAsync()
         {
             _stoppedThreads--;
 
@@ -112,48 +112,35 @@ namespace CameraServer.Devices
                 try
                 {
                     GarbageCollectorCanWorkHere();
-
-                    MediaFrameReference frame = mediaFrameReader.TryAcquireLatestFrame();
-
-                    Stopwatch frameDuration = new Stopwatch();
-                    frameDuration.Start();
-
-                    if (frame == null || frame.VideoMediaFrame == null || frame.VideoMediaFrame.SoftwareBitmap == null)
-                    {
-                        continue;
-                    }
+                    
+                    var lowLagCapture = await mediaCapture.PrepareLowLagPhotoCaptureAsync(ImageEncodingProperties.CreateUncompressed(MediaPixelFormat.Bgra8));
+                    var capturedPhoto = await lowLagCapture.CaptureAsync();
+                    var softwareBitmap = capturedPhoto.Frame.SoftwareBitmap;
+                    await lowLagCapture.FinishAsync();
 
                     using (var stream = new InMemoryRandomAccessStream())
                     {
-                        using (var bitmap = SoftwareBitmap.Convert(frame.VideoMediaFrame.SoftwareBitmap, BitmapPixelFormat.Bgra8, BitmapAlphaMode.Ignore))
+                        var imageTask = BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream).AsTask();
+                        imageTask.Wait();
+                        BitmapEncoder encoder = imageTask.Result;
+                        encoder.SetSoftwareBitmap(softwareBitmap);
+                        
+                        var flushTask = encoder.FlushAsync().AsTask();
+                        flushTask.Wait();
+
+                        using (var asStream = stream.AsStream())
                         {
-                            var imageTask = BitmapEncoder.CreateAsync(BitmapEncoder.JpegEncoderId, stream).AsTask();
-                            imageTask.Wait();
-                            BitmapEncoder encoder = imageTask.Result;
-                            encoder.SetSoftwareBitmap(bitmap);
+                            asStream.Position = 0;
 
-                            var flushTask = encoder.FlushAsync().AsTask();
-                            flushTask.Wait();
+                            var image = new byte[asStream.Length];
+                            asStream.Read(image, 0, image.Length);
 
-                            using (var asStream = stream.AsStream())
+                            lock (_lastFrameAddedLock)
                             {
-                                asStream.Position = 0;
-
-                                var image = new byte[asStream.Length];
-                                asStream.Read(image, 0, image.Length);
-
-                                lock (_lastFrameAddedLock)
-                                {
-                                    if (_lastFrameAdded.Elapsed.Subtract(frameDuration.Elapsed) > TimeSpan.Zero)
-                                    {
-                                        Frame = image;
-
-                                        _lastFrameAdded = frameDuration;
-                                    }
-                                }
-
-                                encoder = null;
+                                Frame = image;
                             }
+
+                            encoder = null;
                         }
                     }
                 }
@@ -167,7 +154,7 @@ namespace CameraServer.Devices
         {
             Task.Factory.StartNew(() =>
             {
-                ProcessFrames();
+                ProcessFramesAsync();
             }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default).AsAsyncAction().AsTask();
         }
 

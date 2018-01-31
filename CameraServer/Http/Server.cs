@@ -17,7 +17,7 @@ namespace CameraServer.Http
         private const uint BUFFER_SIZE = 1024;
         private readonly StreamSocketListener _listener;
 
-        private List<Camera> cams;
+        private List<Camera> cams = new List<Camera>();
 
         public Server()
         {
@@ -50,23 +50,45 @@ namespace CameraServer.Http
                 var socket = args.Socket;
 
                 ServerRequest request = await ReadRequest(socket);
-                await WriteResponse(request, socket);
-
-                socket.InputStream.Dispose();
-                socket.OutputStream.Dispose();
-                socket.Dispose();
+                WriteResponse(request, socket);
             }
             catch { }
         }
 
-        private async Task WriteResponse(ServerRequest request, StreamSocket socket)
+        private void WriteResponse(ServerRequest request, StreamSocket socket)
         {
             var relativeUrlLower = request.Url.ToLowerInvariant();
             var outputStream = socket.OutputStream;
 
             System.Diagnostics.Debug.WriteLine(relativeUrlLower);
+            
+            if (cams.Count == 0)
+            {
+                ServerResponse.WriteResponseText("No cameras available!", outputStream);
+                return;
+            }
 
-            ServerResponse.WriteResponseOK(outputStream);
+            Camera camera = cams.First();
+
+            for (int c=0;c<cams.Count;c++)
+            {
+                if (relativeUrlLower == $"/{c}")
+                {
+                    camera = cams[c];
+                    break;
+                }
+            }
+
+            Task.Factory.StartNew(() =>
+            {
+                ServerResponse.StreamCamera(camera, outputStream);
+            }, CancellationToken.None, TaskCreationOptions.LongRunning, TaskScheduler.Default).AsAsyncAction().AsTask();
+
+            /*
+            socket.InputStream.Dispose();
+            socket.OutputStream.Dispose();
+            socket.Dispose();
+            */
         }
 
         private async Task<ServerRequest> ReadRequest(StreamSocket socket)

@@ -33,6 +33,7 @@ namespace UniversalVision
         private DispatcherTimer timer = new DispatcherTimer();
         
         Camera cam = new Camera();
+        Server srv = new Server();
 
 
         public MainPage()
@@ -50,10 +51,9 @@ namespace UniversalVision
             NT.SendString("/SmartDashboard/Hello", "World");
             /**/
 
-            //StartPreviewAsync();
+            srv.Start();
 
-            Server server = new Server();
-            server.Start();
+            StartPreviewAsync();
         }
 
         private void Timer_Tick(object sender, object e)
@@ -67,11 +67,9 @@ namespace UniversalVision
 
             //NT.SendNumber("/SmartDashboard/Tester", 4.5);
             PreviewControl.Source = null;
-            await cam.SwitchCameraTo("PID_0779");
+            //await cam.SwitchCameraTo("PID_0779");
             try
             {
-                PreviewControl.Source = cam.Capture;
-                await cam.Capture.StartPreviewAsync();
             }
             catch
             {
@@ -87,8 +85,10 @@ namespace UniversalVision
             await cam.Initialize(requestedPID);
             try
             {
-                PreviewControl.Source = cam.Capture;
-                await cam.Capture.StartPreviewAsync();
+                cam.StartProcessing();
+                srv.AddCamera(cam);
+                //PreviewControl.Source = cam.Capture;
+                //await cam.Capture.StartPreviewAsync();
             }
             catch (FileLoadException)
             {

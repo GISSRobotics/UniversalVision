@@ -5,7 +5,9 @@
         Html,
         Javascript,
         Css,
-        Mjpeg
+        Mjpeg,
+        Text,
+        Jpeg
     }
 
     public static class MimeTypeHelper
@@ -21,7 +23,11 @@
                 case HttpContentType.Css:
                     return "text/css; charset=UTF-8";
                 case HttpContentType.Mjpeg:
+                    return "multipart/x-mixed-replace;boundary=--boundary";
+                case HttpContentType.Text:
                     return "text/plain; charset=UTF-8";
+                case HttpContentType.Jpeg:
+                    return "image/jpeg";
                 default:
                     return "text/plain; charset=UTF-8";
             }
